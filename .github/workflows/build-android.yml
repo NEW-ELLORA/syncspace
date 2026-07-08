@@ -1,0 +1,53 @@
+name: Build Android APK (Capacitor)
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  workflow_dispatch:
+
+jobs:
+  build-android:
+    name: Build Android APK
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+
+      - name: Setup Java JDK
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Install Mobile Dependencies
+        run: |
+          cd syncspace-mobile
+          npm install
+
+      - name: Build Web App
+        run: |
+          cd syncspace-mobile
+          npm run build
+
+      - name: Sync Capacitor
+        run: |
+          cd syncspace-mobile
+          npx cap sync android
+
+      - name: Build Debug APK
+        run: |
+          cd syncspace-mobile/android
+          chmod +x gradlew
+          ./gradlew assembleDebug
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: syncspace-mobile-apk
+          path: syncspace-mobile/android/app/build/outputs/apk/debug/app-debug.apk
