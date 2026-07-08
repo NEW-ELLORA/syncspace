@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Scanner, Link as LinkIcon, RefreshCw } from 'lucide-react';
+import { QrCode, Link as LinkIcon, RefreshCw } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 export default function Pairing() {
@@ -42,7 +42,7 @@ export default function Pairing() {
   return (
     <motion.div className="p-4 h-full flex flex-col items-center justify-center" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
       <div className="w-16 h-16 bg-indigo-500/20 text-indigo-400 rounded-full flex items-center justify-center mb-6">
-        <Scanner className="w-8 h-8" />
+        <QrCode className="w-8 h-8" />
       </div>
       
       <h2 className="text-2xl font-bold mb-2 text-center">Pair with Desktop</h2>
