@@ -1,6 +1,6 @@
 import { HashRouter, Routes, Route, Link, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { LayoutDashboard, Bell, CalendarDays, Wallet, Settings, Scanner, RefreshCw } from 'lucide-react';
+import { LayoutDashboard, Bell, CalendarDays, Wallet, Settings, QrCode, RefreshCw } from 'lucide-react';
 import { useState, useEffect } from 'react';
 
 // We'll bring over the exact same pages, but they will render in the mobile viewport.
@@ -49,7 +49,7 @@ export default function App() {
                <RefreshCw className={`w-5 h-5 ${syncing ? 'animate-spin' : ''}`} />
              </button>
              <Link to="/pairing" className="p-2 text-indigo-400 bg-indigo-500/10 hover:bg-indigo-500/20 transition-colors rounded-full focus-visible">
-               <Scanner className="w-5 h-5" />
+               <QrCode className="w-5 h-5" />
              </Link>
           </div>
         </header>

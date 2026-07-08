@@ -19,5 +19,6 @@ export interface ElectronAPI {
   search: (q: string) => Promise<SearchResults>; getDbPath: () => Promise<string>;
   getSyncConfig?: () => Promise<{ ip: string, port: number, secret: string }>;
   exportData: () => Promise<string>;
+  exportBudgetCsv: () => Promise<void>;
 }
 declare global { interface Window { api: ElectronAPI; } }
