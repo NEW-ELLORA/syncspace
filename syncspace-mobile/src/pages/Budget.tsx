@@ -8,11 +8,12 @@ const COLORS = ['#6366f1', '#8b5cf6', '#3b82f6', '#10b981', '#f59e0b', '#ef4444'
 const CATEGORIES = ['Food', 'Transport', 'Rent', 'Entertainment', 'Shopping', 'Health', 'Utilities', 'Education', 'Other'];
 const SHOPPING_CATEGORIES = ['General', 'Groceries', 'Electronics', 'Clothing', 'Home', 'Gifts'];
 
+/* ── FIX #3: framer-motion Variants – ease must be a cubic-bezier array, not a string ── */
 const container = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.05 } } };
 const listItem = {
-  hidden: { opacity: 0, y: -10, height: 0, overflow: 'hidden' },
-  show: { opacity: 1, y: 0, height: 'auto', overflow: 'visible', transition: { duration: 0.3, ease: 'easeOut' } },
-  exit: { opacity: 0, y: -10, height: 0, overflow: 'hidden', transition: { duration: 0.25, ease: 'easeOut' } }
+  hidden: { opacity: 0, y: -10, height: 0, overflow: 'hidden' as const },
+  show: { opacity: 1, y: 0, height: 'auto', overflow: 'visible' as const, transition: { duration: 0.3, ease: [0.4, 0, 0.2, 1] } },
+  exit: { opacity: 0, y: -10, height: 0, overflow: 'hidden' as const, transition: { duration: 0.25, ease: [0.4, 0, 0.2, 1] } }
 };
 
 function CountUp({ value }: { value: number }) {
@@ -22,7 +23,7 @@ function CountUp({ value }: { value: number }) {
   return <motion.span>{display}</motion.span>;
 }
 
-export default function Budget() {
+export default function BudgetPage() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [shoppingList, setShoppingList] = useState<ShoppingItem[]>([]);
   const [budgetConfig, setBudgetConfig] = useState<BudgetConfig | null>(null);
@@ -94,12 +95,16 @@ export default function Budget() {
   };
 
   const handleSaveConfig = async () => {
-    await window.api.updateBudgetConfig({ 
-      starting_balance: parseFloat(configForm.starting_balance) || 0, 
-      monthly_savings_goal: parseFloat(configForm.monthly_savings_goal) || 0 
-    });
-    setIsEditingConfig(false);
-    load();
+    try {
+      await window.api.updateBudgetConfig({ 
+        starting_balance: parseFloat(configForm.starting_balance) || 0, 
+        monthly_savings_goal: parseFloat(configForm.monthly_savings_goal) || 0 
+      });
+      setIsEditingConfig(false);
+      load();
+    } catch (err) {
+      console.error('Failed to save budget config:', err);
+    }
   };
 
   const handleDeleteTxn = async (id: string) => { await window.api.deleteTransaction(id); load(); };
@@ -169,13 +174,24 @@ export default function Budget() {
     barData.push({ month: mLabel, income: inc, expense: exp });
   }
 
-  if (loading) return <div className="flex items-center justify-center h-full"><div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>;
+  if (loading) return (
+    <div className="flex items-center justify-center h-full" style={{ fontFamily: "'Inter', sans-serif" }}>
+      <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+    </div>
+  );
 
   return (
-    <motion.div className="p-6 h-full overflow-y-auto" variants={container} initial="hidden" animate="show">
+    <motion.div
+      className="p-6 h-full overflow-y-auto"
+      style={{ fontFamily: "'Inter', sans-serif" }}
+      variants={container}
+      initial="hidden"
+      animate="show"
+    >
+      {/* ── Page Header ── */}
       <motion.div variants={{ hidden: { opacity: 0 }, show: { opacity: 1 } }} className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Financial Overview</h1>
+          <h1 className="text-3xl font-bold tracking-tight gradient-text">Financial Overview</h1>
           <p className="text-muted-foreground text-sm mt-1">Track your spending, savings, and shopping.</p>
         </div>
         <div className="flex gap-3">
@@ -188,22 +204,29 @@ export default function Budget() {
         </div>
       </motion.div>
 
-      {/* Top Overview Cards */}
+      {/* ── Top Overview Cards ── */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-        <motion.div variants={{ hidden: { opacity: 0 }, show: { opacity: 1 } }} className="glass-card glow-blue p-6 relative group" style={{ background: 'linear-gradient(135deg, rgba(13,18,33,0.8), rgba(59,130,246,0.05))' }}>
+        {/* Total Balance Card */}
+        <motion.div
+          variants={{ hidden: { opacity: 0, y: 16 }, show: { opacity: 1, y: 0, transition: { duration: 0.45, ease: [0.4, 0, 0.2, 1] } } }}
+          className="glass-card glow-blue p-6 relative group"
+          style={{ background: 'linear-gradient(135deg, rgba(13,18,33,0.85), rgba(59,130,246,0.06))' }}
+        >
            <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
-              <IndianRupee className="w-5 h-5 text-blue-400" />
-              <span className="text-sm font-medium text-blue-200/70">Total Balance</span>
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-lg bg-blue-500/15 flex items-center justify-center">
+                <IndianRupee className="w-4 h-4 text-blue-400" />
+              </div>
+              <span className="text-sm font-medium text-blue-200/70 tracking-wide">Total Balance</span>
             </div>
           </div>
           <p className="text-4xl font-extrabold text-white tracking-tight"><CountUp value={derivedTotalBalance} /></p>
           <div className="mt-4 pt-4 border-t border-white/5 flex items-center justify-between">
              <span className="text-xs text-muted-foreground">Starting Balance</span>
              {isEditingConfig ? (
-                <div className="flex items-center gap-2">
-                  <input ref={configInputRef} type="number" className="input-field !py-1 !text-xs w-24" value={configForm.starting_balance} onChange={e => setConfigForm({...configForm, starting_balance: e.target.value})} onKeyDown={e => e.key === 'Enter' && handleSaveConfig()} />
-                  <button onClick={handleSaveConfig} className="text-emerald-400 p-1 rounded hover:bg-emerald-500/20"><Check className="w-4 h-4" /></button>
+                <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
+                  <input ref={configInputRef} type="number" className="input-field !py-1 !text-xs w-24" value={configForm.starting_balance} onChange={e => setConfigForm({...configForm, starting_balance: e.target.value})} onClick={e => e.stopPropagation()} onKeyDown={e => e.key === 'Enter' && handleSaveConfig()} />
+                  <button onClick={handleSaveConfig} className="text-emerald-400 p-1 rounded hover:bg-emerald-500/20 transition-colors"><Check className="w-4 h-4" /></button>
                 </div>
              ) : (
                 <div className="flex items-center gap-2">
@@ -214,21 +237,38 @@ export default function Budget() {
           </div>
         </motion.div>
         
-        <motion.div variants={{ hidden: { opacity: 0 }, show: { opacity: 1 } }} className="glass-card p-6 border-emerald-500/10">
-          <div className="flex items-center gap-2 mb-3">
-            <TrendingUp className="w-4 h-4 text-emerald-400" />
-            <span className="text-sm text-muted-foreground">Net Savings Rate</span>
+        {/* Net Savings Rate Card */}
+        <motion.div
+          variants={{ hidden: { opacity: 0, y: 16 }, show: { opacity: 1, y: 0, transition: { duration: 0.45, ease: [0.4, 0, 0.2, 1], delay: 0.05 } } }}
+          className="glass-card p-6 border-emerald-500/10"
+          style={{ background: 'linear-gradient(135deg, rgba(13,18,33,0.85), rgba(16,185,129,0.04))' }}
+        >
+          <div className="flex items-center gap-2.5 mb-3">
+            <div className="w-8 h-8 rounded-lg bg-emerald-500/15 flex items-center justify-center">
+              <TrendingUp className="w-4 h-4 text-emerald-400" />
+            </div>
+            <span className="text-sm text-muted-foreground tracking-wide">Net Savings Rate</span>
           </div>
           <p className="text-3xl font-bold text-emerald-400">{netSavingsRate}%</p>
-          <p className="text-xs text-muted-foreground mt-4">Current month efficiency</p>
+          <p className="text-xs text-muted-foreground mt-4 pt-4 border-t border-white/5">Current month efficiency</p>
         </motion.div>
       </div>
 
-      {/* Savings Goal & Shopping summary */}
+      {/* ── Savings Goal & Shopping Summary ── */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-         <motion.div variants={{ hidden: { opacity: 0 }, show: { opacity: 1 } }} className="glass-card p-6 relative group flex flex-col justify-center cursor-pointer" onClick={() => !isEditingConfig && setIsEditingConfig(true)}>
+         {/* Monthly Savings Goal Card */}
+         <motion.div
+           variants={{ hidden: { opacity: 0, y: 16 }, show: { opacity: 1, y: 0, transition: { duration: 0.45, ease: [0.4, 0, 0.2, 1] } } }}
+           className="glass-card p-6 relative group flex flex-col justify-center cursor-pointer"
+           onClick={() => !isEditingConfig && setIsEditingConfig(true)}
+         >
            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-sm font-semibold flex items-center gap-2"><Target className="w-4 h-4 text-primary" /> Monthly Savings Goal</h2>
+              <h2 className="text-sm font-semibold flex items-center gap-2.5">
+                <div className="w-7 h-7 rounded-lg bg-indigo-500/15 flex items-center justify-center">
+                  <Target className="w-3.5 h-3.5 text-primary" />
+                </div>
+                Monthly Savings Goal
+              </h2>
               {!isEditingConfig && (
                 <button className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-white" title="Edit Goal">
                   <Edit2 className="w-3.5 h-3.5" />
@@ -239,8 +279,8 @@ export default function Budget() {
            {isEditingConfig ? (
               <div className="flex items-center gap-3 mb-4" onClick={e => e.stopPropagation()}>
                 <span className="text-sm text-muted-foreground font-medium">Goal: ₹</span>
-                <input type="number" className="input-field !py-1.5 w-32" value={configForm.monthly_savings_goal} onChange={e => setConfigForm({...configForm, monthly_savings_goal: e.target.value})} onKeyDown={e => e.key === 'Enter' && handleSaveConfig()} />
-                <button onClick={handleSaveConfig} className="text-xs bg-primary/20 text-primary px-3 py-1.5 rounded-lg hover:bg-primary/30 font-medium">Save</button>
+                <input type="number" className="input-field !py-1.5 w-32" value={configForm.monthly_savings_goal} onChange={e => setConfigForm({...configForm, monthly_savings_goal: e.target.value})} onClick={e => e.stopPropagation()} onKeyDown={e => e.key === 'Enter' && handleSaveConfig()} />
+                <button onClick={handleSaveConfig} className="text-xs bg-primary/20 text-primary px-3 py-1.5 rounded-lg hover:bg-primary/30 font-medium transition-colors">Save</button>
               </div>
            ) : (
              <div className="flex justify-between items-end mb-3">
@@ -257,25 +297,36 @@ export default function Budget() {
                className="h-full bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full shadow-[0_0_10px_rgba(99,102,241,0.5)]"
                initial={{ width: 0 }}
                animate={{ width: `${savingsProgress}%` }}
-               transition={{ duration: 1, ease: "easeOut", delay: 0.2 }}
+               transition={{ duration: 1, ease: [0.4, 0, 0.2, 1], delay: 0.2 }}
              />
            </div>
          </motion.div>
          
-         <motion.div variants={{ hidden: { opacity: 0 }, show: { opacity: 1 } }} className="glass-card p-6 flex flex-col justify-center">
-            <h2 className="text-sm font-semibold flex items-center gap-2 mb-3"><ShoppingBag className="w-4 h-4 text-amber-400" /> Pending Shopping Est.</h2>
+         {/* Pending Shopping Estimate */}
+         <motion.div
+           variants={{ hidden: { opacity: 0, y: 16 }, show: { opacity: 1, y: 0, transition: { duration: 0.45, ease: [0.4, 0, 0.2, 1], delay: 0.05 } } }}
+           className="glass-card p-6 flex flex-col justify-center"
+           style={{ background: 'linear-gradient(135deg, rgba(13,18,33,0.85), rgba(245,158,11,0.04))' }}
+         >
+            <h2 className="text-sm font-semibold flex items-center gap-2.5 mb-3">
+              <div className="w-7 h-7 rounded-lg bg-amber-500/15 flex items-center justify-center">
+                <ShoppingBag className="w-3.5 h-3.5 text-amber-400" />
+              </div>
+              Pending Shopping Est.
+            </h2>
             <p className="text-3xl font-bold text-amber-400 mb-1"><CountUp value={totalShoppingEst} /></p>
             <p className="text-sm text-muted-foreground">{shoppingList.filter(s => !s.is_purchased).length} items remaining to buy</p>
          </motion.div>
       </div>
 
+      {/* ── Shopping List & Recent Transactions ── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
          {/* Shopping List */}
-        <motion.div variants={{ hidden: { opacity: 0 }, show: { opacity: 1 } }} className="glass-card p-6 max-h-[500px] flex flex-col">
+        <motion.div variants={{ hidden: { opacity: 0, y: 16 }, show: { opacity: 1, y: 0, transition: { duration: 0.45, ease: [0.4, 0, 0.2, 1] } } }} className="glass-card p-6 max-h-[500px] flex flex-col">
           <div className="flex items-center justify-between mb-5">
             <h2 className="text-base font-semibold flex items-center gap-2"><ShoppingBag className="w-5 h-5 text-primary" /> Shopping List</h2>
             {shoppingList.length > 0 && (
-               <button onClick={() => { setIsEditingShop(null); setShowShopModal(true); }} className="text-xs text-primary hover:text-indigo-400 font-medium">Add Item</button>
+               <button onClick={() => { setIsEditingShop(null); setShowShopModal(true); }} className="text-xs text-primary hover:text-indigo-400 font-medium transition-colors">Add Item</button>
             )}
           </div>
           <div className="overflow-y-auto flex-1 space-y-2 pr-2 -mr-2">
@@ -317,7 +368,7 @@ export default function Budget() {
                        <span className={`text-sm font-semibold ${item.is_purchased ? 'text-muted-foreground' : 'text-amber-400'}`}>₹{item.estimated_cost?.toLocaleString('en-IN') || '0'}</span>
                      </div>
                      <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-                        {item.is_purchased && <button onClick={() => convertShopToTxn(item)} className="p-1.5 text-emerald-400 hover:bg-white/5 rounded-md text-xs font-medium border border-emerald-500/20" title="Convert to Transaction">To Txn</button>}
+                        {item.is_purchased && <button onClick={() => convertShopToTxn(item)} className="p-1.5 text-emerald-400 hover:bg-white/5 rounded-md text-xs font-medium border border-emerald-500/20 transition-colors" title="Convert to Transaction">To Txn</button>}
                         <button onClick={() => openEditShop(item)} className="p-1.5 text-muted-foreground hover:text-primary transition-colors bg-white/5 rounded-md" title="Edit"><Edit2 className="w-3.5 h-3.5" /></button>
                         <button onClick={() => handleDeleteShop(item.id)} className="p-1.5 text-muted-foreground hover:text-destructive transition-colors bg-white/5 rounded-md" title="Delete"><Trash2 className="w-3.5 h-3.5" /></button>
                      </div>
@@ -329,13 +380,13 @@ export default function Budget() {
         </motion.div>
 
         {/* Recent Transactions */}
-        <motion.div variants={{ hidden: { opacity: 0 }, show: { opacity: 1 } }} className="glass-card p-6 max-h-[500px] flex flex-col">
+        <motion.div variants={{ hidden: { opacity: 0, y: 16 }, show: { opacity: 1, y: 0, transition: { duration: 0.45, ease: [0.4, 0, 0.2, 1], delay: 0.05 } } }} className="glass-card p-6 max-h-[500px] flex flex-col">
           <div className="flex items-center justify-between mb-5">
             <h2 className="text-base font-semibold flex items-center gap-2"><Receipt className="w-5 h-5 text-primary" /> Recent Transactions</h2>
             <div className="flex gap-2">
-              <button onClick={exportCsv} className="text-xs text-muted-foreground hover:text-white font-medium">Export CSV</button>
+              <button onClick={exportCsv} className="text-xs text-muted-foreground hover:text-white font-medium transition-colors">Export CSV</button>
               {transactions.length > 0 && (
-                 <button onClick={() => { setIsEditingTxn(null); setShowTxnModal(true); }} className="text-xs text-primary hover:text-indigo-400 font-medium">Add Txn</button>
+                 <button onClick={() => { setIsEditingTxn(null); setShowTxnModal(true); }} className="text-xs text-primary hover:text-indigo-400 font-medium transition-colors">Add Txn</button>
               )}
             </div>
           </div>
@@ -377,17 +428,20 @@ export default function Budget() {
         </motion.div>
       </div>
 
-      {/* Charts */}
+      {/* ── Charts ── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-        <motion.div variants={{ hidden: { opacity: 0 }, show: { opacity: 1 } }} className="glass-card p-6">
+        {/* Pie Chart – Spending by Category */}
+        <motion.div variants={{ hidden: { opacity: 0, y: 16 }, show: { opacity: 1, y: 0, transition: { duration: 0.45, ease: [0.4, 0, 0.2, 1] } } }} className="glass-card p-6">
           <h2 className="text-base font-semibold mb-6 flex items-center gap-2"><PieIcon className="w-5 h-5 text-primary" /> Spending by Category (This Month)</h2>
           {pieData.length > 0 ? (
             <ResponsiveContainer width="100%" height={260}>
               <PieChart>
-                <Pie data={pieData} cx="50%" cy="50%" innerRadius={70} outerRadius={100} paddingAngle={4} dataKey="value" label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}>
+                {/* FIX #5: null-check percent before using it */}
+                <Pie data={pieData} cx="50%" cy="50%" innerRadius={70} outerRadius={100} paddingAngle={4} dataKey="value" label={({ name, percent }) => `${name} ${percent != null ? (percent * 100).toFixed(0) : 0}%`}>
                   {pieData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
                 </Pie>
-                <Tooltip formatter={(value: number) => `₹${value.toLocaleString('en-IN')}`} contentStyle={{ background: '#0d1221', border: '1px solid rgba(148,163,184,0.1)', borderRadius: '12px', color: '#e2e8f0', fontSize: '12px' }} itemStyle={{ fontWeight: 500 }} />
+                {/* FIX #4: value typed as any for recharts Tooltip formatter compatibility */}
+                <Tooltip formatter={(value: any) => `₹${Number(value).toLocaleString('en-IN')}`} contentStyle={{ background: '#0d1221', border: '1px solid rgba(148,163,184,0.1)', borderRadius: '12px', color: '#e2e8f0', fontSize: '12px', fontFamily: "'Inter', sans-serif" }} itemStyle={{ fontWeight: 500 }} />
               </PieChart>
             </ResponsiveContainer>
           ) : (
@@ -398,14 +452,16 @@ export default function Budget() {
           )}
         </motion.div>
 
-        <motion.div variants={{ hidden: { opacity: 0 }, show: { opacity: 1 } }} className="glass-card p-6">
+        {/* Bar Chart – Income vs Expenses */}
+        <motion.div variants={{ hidden: { opacity: 0, y: 16 }, show: { opacity: 1, y: 0, transition: { duration: 0.45, ease: [0.4, 0, 0.2, 1], delay: 0.05 } } }} className="glass-card p-6">
           <h2 className="text-base font-semibold mb-6 flex items-center gap-2"><TrendingUp className="w-5 h-5 text-primary" /> Income vs Expenses (6 Months)</h2>
           <ResponsiveContainer width="100%" height={260}>
             <BarChart data={barData} barGap={6} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.06)" vertical={false} />
-              <XAxis dataKey="month" tick={{ fill: '#94a3b8', fontSize: 11 }} axisLine={false} tickLine={false} dy={10} />
-              <YAxis tickFormatter={(val) => `₹${val>=1000 ? (val/1000)+'k' : val}`} tick={{ fill: '#94a3b8', fontSize: 11 }} axisLine={false} tickLine={false} dx={-10} />
-              <Tooltip formatter={(value: number) => `₹${value.toLocaleString('en-IN')}`} cursor={{fill: 'rgba(255,255,255,0.02)'}} contentStyle={{ background: '#0d1221', border: '1px solid rgba(148,163,184,0.1)', borderRadius: '12px', color: '#e2e8f0', fontSize: '12px' }} itemStyle={{ fontWeight: 500 }} />
+              <XAxis dataKey="month" tick={{ fill: '#94a3b8', fontSize: 11, fontFamily: "'Inter', sans-serif" }} axisLine={false} tickLine={false} dy={10} />
+              <YAxis tickFormatter={(val) => `₹${val>=1000 ? (val/1000)+'k' : val}`} tick={{ fill: '#94a3b8', fontSize: 11, fontFamily: "'Inter', sans-serif" }} axisLine={false} tickLine={false} dx={-10} />
+              {/* FIX #4: value typed as any for recharts Tooltip formatter compatibility */}
+              <Tooltip formatter={(value: any) => `₹${Number(value).toLocaleString('en-IN')}`} cursor={{fill: 'rgba(255,255,255,0.02)'}} contentStyle={{ background: '#0d1221', border: '1px solid rgba(148,163,184,0.1)', borderRadius: '12px', color: '#e2e8f0', fontSize: '12px', fontFamily: "'Inter', sans-serif" }} itemStyle={{ fontWeight: 500 }} />
               <Bar dataKey="income" name="Income" fill="#10b981" radius={[4, 4, 0, 0]} maxBarSize={32} />
               <Bar dataKey="expense" name="Expense" fill="#f43f5e" radius={[4, 4, 0, 0]} maxBarSize={32} />
             </BarChart>
@@ -413,7 +469,7 @@ export default function Budget() {
         </motion.div>
       </div>
 
-      {/* Transaction Modal */}
+      {/* ── Transaction Modal ── */}
       <AnimatePresence>
         {showTxnModal && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="modal-overlay" onClick={() => setShowTxnModal(false)}>
@@ -421,7 +477,7 @@ export default function Budget() {
               className="modal-content" onClick={e => e.stopPropagation()}>
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-xl font-bold">{isEditingTxn ? 'Edit Transaction' : 'Add Transaction'}</h2>
-                <button onClick={() => setShowTxnModal(false)} className="text-muted-foreground hover:text-foreground"><X className="w-5 h-5" /></button>
+                <button onClick={() => setShowTxnModal(false)} className="text-muted-foreground hover:text-foreground transition-colors"><X className="w-5 h-5" /></button>
               </div>
               <div className="space-y-4">
                 <div className="flex gap-2">
@@ -472,7 +528,7 @@ export default function Budget() {
         )}
       </AnimatePresence>
       
-      {/* Shopping Modal */}
+      {/* ── Shopping Modal ── */}
       <AnimatePresence>
         {showShopModal && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="modal-overlay" onClick={() => setShowShopModal(false)}>
@@ -480,7 +536,7 @@ export default function Budget() {
               className="modal-content" onClick={e => e.stopPropagation()}>
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-xl font-bold">{isEditingShop ? 'Edit Shopping Item' : 'Add Shopping Item'}</h2>
-                <button onClick={() => setShowShopModal(false)} className="text-muted-foreground hover:text-foreground"><X className="w-5 h-5" /></button>
+                <button onClick={() => setShowShopModal(false)} className="text-muted-foreground hover:text-foreground transition-colors"><X className="w-5 h-5" /></button>
               </div>
               <div className="space-y-4">
                 <div>

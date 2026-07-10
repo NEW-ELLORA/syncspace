@@ -32,8 +32,28 @@ export default function App() {
 
   const handleSync = async () => {
     setSyncing(true);
-    // TODO: implement sync pull from PC using Capacitor HTTP
-    setTimeout(() => setSyncing(false), 2000);
+    try {
+      const url = localStorage.getItem('syncspace_endpoint');
+      if (!url) {
+        alert("Please pair with desktop first.");
+        setSyncing(false);
+        return;
+      }
+      
+      const res = await fetch(`${url}/api/sync`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.payload) {
+          localStorage.setItem('syncspace_db', data.payload);
+          localStorage.removeItem('syncspace_outbox');
+          window.location.reload();
+        }
+      }
+    } catch (e) {
+      console.error('Sync failed:', e);
+      alert("Failed to sync. Ensure you are on the same WiFi as the Desktop app.");
+    }
+    setSyncing(false);
   };
 
   return (
